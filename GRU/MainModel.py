@@ -5,7 +5,7 @@ import os
 
 
 class MainModel:
-    trainingEpochsCount = 1
+    trainingEpochsCount = 50
     modelFileLocation = "MainModel"
     model = None
     trainSamples, trainLabels = None, None
@@ -13,6 +13,7 @@ class MainModel:
 
     def __init__(self):
         if os.path.exists(self.modelFileLocation):
+            print("Found existing model. Loading...")
             self.model = tf.keras.models.load_model(self.modelFileLocation)
             self.model.summary()
         else:
@@ -38,16 +39,16 @@ class MainModel:
 
     def makePredictions(self, filedir):
         for filename in os.listdir(filedir):
-            f = os.path.join(filedir, filename)
-            if not os.path.isfile(f):
+            file = os.path.join(filedir, filename)
+            if not os.path.isfile(file):
                 continue
 
-            image = MainModel.loadImage(f)
+            image = MainModel.loadImage(file)
             predictions = self.model.predict(image)
             score = tf.nn.softmax(predictions[0])
             class_labels = ["cat", "dog"]
-            print("This image most likely belongs to {} with a {:.2f} percent confidence."
-                  .format(class_labels[np.argmax(score)], 100 * np.max(score)))
+            print("File: {}, most likely belongs to {} with a {:.2f} percent confidence."
+                  .format(file, class_labels[np.argmax(score)], 100 * np.max(score)))
 
     @staticmethod
     def getSamples():

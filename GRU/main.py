@@ -13,5 +13,8 @@ if __name__ == '__main__':
 
     if sys.argv[1] == "WithNoise":
         model = NoiseModel()
+        print("Predictions with noise addition:")
         model.makeNoisedPredictions("Images")
+        print("Predictions without noise addition:")
+        model.makeUsualPredictions("Images")
 

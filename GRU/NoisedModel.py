@@ -5,7 +5,7 @@ import os
 
 
 class NoiseModel:
-    trainingEpochsCount = 1
+    trainingEpochsCount = 50
     modelFileLocation = "NoisedModel"
     model = None
     trainSamples, trainLabels = None, None
@@ -14,12 +14,14 @@ class NoiseModel:
     def __init__(self):
 
         if os.path.exists(self.modelFileLocation):
+            print("Found existing model. Loading...")
             self.model = tf.keras.models.load_model(self.modelFileLocation)
             self.model.summary()
         else:
             self.model = self.defineModel()
             (trainSamples, trainLabels), (testSamples, testLabels) = self.getSamples()
-            self.model.fit(trainSamples, trainLabels, epochs=self.trainingEpochsCount, validation_data=(testSamples, testLabels))
+            self.model.fit(trainSamples, trainLabels, epochs=self.trainingEpochsCount,
+                           validation_data=(testSamples, testLabels))
             self.model.save(self.modelFileLocation)
 
     def defineModel(self):
@@ -44,6 +46,20 @@ class NoiseModel:
                 continue
 
             image = NoiseModel.loadImage(f)
+            image = NoiseModel.noiseImage(image)
+            predictions = self.model.predict(image)
+            score = tf.nn.softmax(predictions[0])
+            class_labels = ["cat", "dog"]
+            print("This image most likely belongs to {} with a {:.2f} percent confidence."
+                  .format(class_labels[np.argmax(score)], 100 * np.max(score)))
+
+    def makeUsualPredictions(self, filedir):
+        for filename in os.listdir(filedir):
+            f = os.path.join(filedir, filename)
+            if not os.path.isfile(f):
+                continue
+
+            image = NoiseModel.loadImage(f)
             predictions = self.model.predict(image)
             score = tf.nn.softmax(predictions[0])
             class_labels = ["cat", "dog"]
@@ -53,15 +69,20 @@ class NoiseModel:
     @staticmethod
     def getSamples():
         trainingSamples, trainingLabels, testingSamples, testingLabels = NoiseModel.loadDataset()
-        trainingSamples, testingSamples = NoiseModel.preparePixels(trainingSamples, testingSamples)
+        trainingSamples, testingSamples = NoiseModel.prepareNoisedPixels(trainingSamples, testingSamples)
         return (trainingSamples, trainingLabels), (testingSamples, testingLabels)
 
     @staticmethod
-    def preparePixels(trainSamples, testSamples):
-        shift = 25.0
-        trainNormed = ((trainSamples + shift) % 256).astype("float32") / 255.0
-        testNormed = ((testSamples + shift) % 256).astype("float32") / 255.0
+    def prepareNoisedPixels(trainSamples, testSamples):
+        noiseShift = 25.0
+        trainNormed = ((trainSamples + noiseShift) % 256).astype("float32") / 255.0
+        testNormed = ((testSamples + noiseShift) % 256).astype("float32") / 255.0
         return trainNormed, testNormed
+
+    @staticmethod
+    def noiseImage(image):
+        noiseShift = 25.0
+        return (image + noiseShift) % 256
 
     @staticmethod
     def loadImage(filepath):
@@ -90,4 +111,3 @@ class NoiseModel:
             filteredSamples.append(sample)
             filteredLabels.append([0] if label[0] == 3 else [1])
         return np.array(filteredSamples), np.array(filteredLabels)
-
